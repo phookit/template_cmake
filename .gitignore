@@ -1,0 +1,6 @@
+modern-cmake/
+template/
+*.swp
+*.pyc
+*.pyo
+

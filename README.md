@@ -1,1 +1,115 @@
 # template_cmake
+
+## Generated files
+
+### `CMakeLists.txt`
+
+Top level CMakeLists.txt. Contains:
+
+* minimum cmake version
+* Project info, name, version, description, languages (`project` section)
+* Conditional for top level CMakeLists.txt
+    * Sets cmake extentions (use c++xx instead of g++xx)
+    * Sets properties (`USE_FOLDERS`, etc)
+    * `ìnclude`s CTest
+    * Finds/uses Doxygen
+* `ìnclude`s other stuff (FetchContent)
+* `find_package`s (Boost/whatever you need to add)
+* `FetchContent_Declare`s for whatever libraries are required
+* Adds the `src`sub dir for librariy files
+* Adds the `àpps` sub dir for `main`applications.
+* Adds the `tests`sub directory if top level CMakeLists.txt
+
+### `include/PROJ_NAME/`
+
+* Creates the include directory structure. No headers are added. This is where publicly available library headers should go.
+
+### `src/CMakeLists.txt`
+
+* Adds a `HEADER_LIST`of files either via globbing or by explicitly listing header files from the ìnclude directory.
+* `àdd_library` with source files and library name.
+* `target_include_directories` for publicly available headers.
+* `target_link_libraries` for linking libs that our library needs.
+* `target_compile_features` for C++ std if applicable (should this be in top level makefile instead?)
+* Adds IDE meta for IDEs (`source_group`)
+
+The `src`dir will also contain our library code.
+
+### `tests/CMakeLists.txt`
+
+* `FetchContent_Declare`unit test lib (Catch2 by default)
+* `àdd_executable` for unit tests, lists unit test source files from the `tests`directory.
+* `target_compile_features` for C++ std used by unit tests.
+* `target_link_libraries` for linking libs (our lib and Carch2 lib) that our unit tests need.
+* `àdd_test` to register unit tests.
+
+The `tests`dir will also include unit test source code. Ideally one source file for each library file. Source filenames will be prefixed with `test_`for now.
+
+### `docs/CMakeLists.txt`
+
+* sets DocyGen options (`DOXYGEN_EXTRACT_ALL`, `DOXYGEN_BUILTIN_STL_SUPPORT`, etc)
+* `docygen_add_docs`from all include header files into a `mainpage.md` file.
+
+### `àpps/CMakeLists.txt`
+
+* Adds `main`source files as named executables.
+* Sets `target_compile_features`for C++ std
+* `target_link_libraries`to link libs for the named executable.
+
+Ideally each application should consist of a single source with a `main`function and link to a library with required functionality.
+
+### `cmake/`
+
+Add .cmake files for whatever reason.
+
+
+## Design
+
+CMakeLists use `àdd_executable`, `target_link_libraries`, etc, etc that require a target name. The target can be a lib or an executable, etc. The Python app will have a `Target`class that contains the target name. The Python app will also have a CMakeList class that can generate the strings to be added to a CMakeLists.txt file via methods that match the various functions available in CMake (`àdd_executable`, etc).
+
+Command line parameters to the Python app specify:
+
+* The output directory.
+* The name of the project.
+* The language (C or C++). Affects generated source file names (.cpp or .c, etc)
+* The executable apps name(s). This will cause the `àpps` directory to be created with a sub dir for the app source code along with suitable CMakeLists.txt. It can be a single app name or a comma separated list of app names.
+* The library name(s). This will cause the `src` directory to be created along with sub-dirrectories for each library. Each sub dir will have a suitable CMakeLists.txt file generated. This can be a comma separated list of lib names. Each lib name can also be siffixed with `static`, `dynamic`or `both`to specify the types of library to build. The default is `both`.
+* The compiler std. Minimum c++11 (What about C?) (Mix this with the language option above??)
+
+If a single library is specified no sub-dirs will be created. If multiple lib names are specified sub-directories will be created. i.e:
+
+### Single library
+
+    - src/
+        libname.c[pp]
+    - inlude/PROJ_NAME/
+        libname.h[pp]
+
+### Multiple libraries
+
+    - src/
+        - lib1name/
+            lib1name.c[pp]
+            CMakeLists.txt
+        - lib2name/
+            lib2name.c[pp]
+            CMakeLists.txt
+    - inlude/PROJ_NAME/
+        - lib1name/
+            lib1name.h[pp]
+        - lib2name/
+            lib2name.h[pp]
+
+In both cases the `tests` dir will contain sub dirs or not depending on single or multi lib.
+
+If multiple `àpps` are specified the same is true for the `àpps` directory.
+
+
+## Future
+
+* May want individual libraries to be built/unit tested within a single CMake project. In this case the `src` directory should have sub dirs for each lib. Same with the apps directory. Each sub dir will have its own CMakeLists.txt.
+* Possibly create a .yaml file that specifies the config for various CMakeLists.txt from the root CMakeLists.txt and all sub dir CMakeLists.txt for more complicated initial projects.
+
+
+
+
