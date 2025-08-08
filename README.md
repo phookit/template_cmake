@@ -22,7 +22,7 @@ Top level CMakeLists.txt. Contains:
 
 ### `include/PROJ_NAME/`
 
-* Creates the include directory structure. No headers are added. This is where publicly available library headers should go.
+* Creates the include directory structure. This is where publicly available library headers should go. By default a header file named `PROJ_NAME.h[pp]`will be generated depending on the chosen language.
 
 ### `src/CMakeLists.txt`
 
@@ -33,7 +33,7 @@ Top level CMakeLists.txt. Contains:
 * `target_compile_features` for C++ std if applicable (should this be in top level makefile instead?)
 * Adds IDE meta for IDEs (`source_group`)
 
-The `src`dir will also contain our library code.
+The `src`dir will also contain our library code. By default a source file name `PROJ_NAME.c[pp]`will be generated.
 
 ### `tests/CMakeLists.txt`
 
@@ -58,6 +58,8 @@ The `tests`dir will also include unit test source code. Ideally one source file 
 
 Ideally each application should consist of a single source with a `main`function and link to a library with required functionality.
 
+By default a source file name `{PROJ_NAME}_main.c[pp]` will be generated.
+
 ### `cmake/`
 
 Add .cmake files for whatever reason.
@@ -65,16 +67,15 @@ Add .cmake files for whatever reason.
 
 ## Design
 
-CMakeLists use `àdd_executable`, `target_link_libraries`, etc, etc that require a target name. The target can be a lib or an executable, etc. The Python app will have a `Target`class that contains the target name. The Python app will also have a CMakeList class that can generate the strings to be added to a CMakeLists.txt file via methods that match the various functions available in CMake (`àdd_executable`, etc).
+CMakeLists use `àdd_executable`, `target_link_libraries`, etc, etc that require a target name. The target can be a lib or an executable, etc.The Python app will also have a CMakeList class that can generate the strings to be added to a CMakeLists.txt file via methods that match the various functions available in CMake (`àdd_executable`, etc).
 
 Command line parameters to the Python app specify:
 
 * The output directory.
 * The name of the project.
-* The language (C or C++). Affects generated source file names (.cpp or .c, etc)
+* The language (C or C++). Affects generated source file names (.cpp or .c, etc). For C++ this may also include the std. i.e. `c++17`.
 * The executable apps name(s). This will cause the `àpps` directory to be created with a sub dir for the app source code along with suitable CMakeLists.txt. It can be a single app name or a comma separated list of app names.
 * The library name(s). This will cause the `src` directory to be created along with sub-dirrectories for each library. Each sub dir will have a suitable CMakeLists.txt file generated. This can be a comma separated list of lib names. Each lib name can also be siffixed with `static`, `dynamic`or `both`to specify the types of library to build. The default is `both`.
-* The compiler std. Minimum c++11 (What about C?) (Mix this with the language option above??)
 
 If a single library is specified no sub-dirs will be created. If multiple lib names are specified sub-directories will be created. i.e:
 
