@@ -246,7 +246,15 @@ project(
             command += " ALIAS"
         command += " " + " ".join(sources) + ")"
         return command
-   
+  
+    def set_target_properties(self, target, properties: list[tuple], *, comment=""):
+        result = _mk_comment(comment)
+        prop_str = ""
+        for pname, pvalue in properties:
+            prop_str += f" {pname} \"{pvalue}\""
+        result.append(f"set_target_properties({target} PROPERTIES {prop_str})")
+        return result
+
     def include(self, name, *, comment=""):
         result = _mk_comment(comment)
         result.append(f"include({name})")

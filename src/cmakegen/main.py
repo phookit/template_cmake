@@ -158,6 +158,9 @@ Emergency override MODERN_CMAKE_BUILD_TESTING provided as well""")
             "cxx_std_11", visibility="PRIVATE"))
         main_branch.append(cm.target_link_libraries(self._args.app_name,
             [self._args.lib_name], visibility="PRIVATE"))
+        main_branch.append(cm.set_target_properties(self._args.app_name,
+            [("OUTPUT_NAME", f"{self._args.project_name.lower()}"),],
+            comment="Explicitly set the filename for the executable file"))
         out_file = Path(self._args.output_dir) / self._args.project_name / "apps" / "CMakeLists.txt"
         self.write_cmakelists(out_file, main_branch)
 
@@ -208,7 +211,7 @@ doxygen_add_docs(docs modern/lib.hpp "${CMAKE_CURRENT_SOURCE_DIR}/mainpage.md"
         main_branch.append(cm.target_compile_features(test_name,
             "cxx_std_17", visibility="PRIVATE"))
         main_branch.append(cm.target_link_libraries(test_name,
-            [f"{self._args.project_name}_lib", "Catch2::Catch2"], visibility="PRIVATE"))
+            [f"{self._args.lib_name}", "Catch2::Catch2"], visibility="PRIVATE"))
         main_branch.append(cm.add_test(f"{test_name}_test", test_name)) 
         out_file = Path(self._args.output_dir) / self._args.project_name / "tests" / "CMakeLists.txt"
         self.write_cmakelists(out_file, main_branch)
@@ -235,9 +238,9 @@ def main():
     args = parser.parse_args()
 
     if args.app_name == "-":
-        args.app_name = f"{args.project_name}_app"
+        args.app_name = f"{args.project_name.lower()}_app"
     if args.lib_name == "-":
-        args.lib_name = f"{args.project_name}_lib"
+        args.lib_name = f"{args.project_name.lower()}"
     if args.no_app:
         args.app_name = None
     if args.no_lib:
