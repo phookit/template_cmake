@@ -1,5 +1,14 @@
 # template_cmake
 
+## Usage
+
+    python3 src/cmakegen/main.py -o /tmp -n "MyProject"
+    cd /tmp/MyProject
+    cmake -S . -B build
+    cmake --build build
+    cmake --build build --target test
+    cmake --build build --target docs
+
 ## Generated files
 
 ### `CMakeLists.txt`
