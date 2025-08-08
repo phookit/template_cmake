@@ -13,6 +13,15 @@ def create_dirs(path):
 class CMakeGen:
     def __init__(self, args):
         self._args = args
+        self._lc_project_name = self._args.project_name.lower()
+
+        hdr_ext = "h"
+        src_ext = "c"
+        if self._args.language == "CXX":
+            hdr_ext += "pp"
+            src_ext += "pp"
+        self._src_filename = f"{self._lc_project_name}.{src_ext}"
+        self._hdr_filename = f"{self._lc_project_name}.{hdr_ext}"
 
     def write_cmakelists(self, out_file, root_branch):
         print("write_cmakelists...")
@@ -28,6 +37,60 @@ class CMakeGen:
         create_dirs(root_path / "tests")
         if not self._args.no_docs:
           create_dirs(root_path / self._args.docs_dir)
+
+    def init_example_source(self):
+        root_dir = self._args.output_dir
+        root_path = Path(root_dir) / self._args.project_name
+        # top level include
+        top_include_dir = root_path / "include" / self._args.project_name
+        include_filename = top_include_dir / f"{self._hdr_filename}"
+        with open(include_filename, "w") as f:
+            f.write(f"""#ifndef {self._args.project_name}_H
+#define {self._args.project_name}_H
+
+int example(int a);
+
+#endif
+""")
+
+        # lib source
+        if self._args.lib_name is not None:
+            lib_src_file = root_path / "src" / f"{self._src_filename}"
+            with open(lib_src_file, "w") as f:
+                f.write(f"""#include \"{self._args.project_name}/{self._hdr_filename}\"
+int example(int a)
+{{
+    return a * 2;
+}}
+""")
+
+        # app source
+        if self._args.lib_name is not None:
+            app_src_file = root_path / "apps" / f"{self._src_filename}"
+            with open(app_src_file, "w") as f:
+                f.write(f"""#include \"{self._args.project_name}/{self._hdr_filename}\"
+
+int main(int argc, char* argv[])
+{{
+    int b = example(12);
+    return 0;
+}}
+
+""")
+        # test source
+        test_src_file = root_path / "tests" / f"test{self._src_filename}"
+        with open(test_src_file, "w") as f:
+            f.write(f"""#define CATCH_CONFIG_MAIN
+#include <catch2/catch.hpp>
+#include \"{self._args.project_name}/{self._hdr_filename}\"
+
+TEST_CASE( "Quick check", "[main]" ) 
+{{
+    int res = example(12);
+    REQUIRE( res == 42 );
+}}
+""")
+
 
     def gen_main_cmakelists(self):
         cm = CMakeWrapper()
@@ -88,12 +151,9 @@ Emergency override MODERN_CMAKE_BUILD_TESTING provided as well""")
         if self._args.app_name is None:
             return
         cm = CMakeWrapper()
-        src_filename = f"{self._args.project_name}.c"
-        if self._args.language == "CXX":
-            src_filename += "pp"
         main_branch = cm.branch()
         main_branch.append(cm.add_executable(self._args.app_name,
-            [src_filename]))
+            [self._src_filename]))
         main_branch.append(cm.target_compile_features(self._args.app_name,
             "cxx_std_11", visibility="PRIVATE"))
         main_branch.append(cm.target_link_libraries(self._args.app_name,
@@ -105,17 +165,11 @@ Emergency override MODERN_CMAKE_BUILD_TESTING provided as well""")
         if self._args.lib_name is None:
             return
         cm = CMakeWrapper()
-        src_filename = f"{self._args.project_name}.c"
-        if self._args.language == "CXX":
-            src_filename += "pp"
-        hdr_filename = f"{self._args.project_name}.h"
-        if self._args.language == "CXX":
-            hdr_filename += "pp"
-        hdr_list = f"${{{self._args.project_name}_SOURCE_DIR/include/{self._args.project_name}/{hdr_filename}"
+        hdr_list = f"${{{self._args.project_name}_SOURCE_DIR}}/include/{self._args.project_name}/{self._hdr_filename}"
         main_branch = cm.branch()
         main_branch.append(cm.set("HEADER_LIST", hdr_list))
         main_branch.append(cm.add_library(self._args.lib_name,
-            [src_filename, "${HEADER_LIST}"]))
+            [self._src_filename, "${HEADER_LIST}"]))
         main_branch.append(cm.target_include_directories(self._args.lib_name,
             ["../include"], visibility="PUBLIC"))
         main_branch.append(cm.target_link_libraries(self._args.lib_name,
@@ -143,9 +197,7 @@ doxygen_add_docs(docs modern/lib.hpp "${CMAKE_CURRENT_SOURCE_DIR}/mainpage.md"
 
     def gen_tests(self):
         test_name = f"test{self._args.lib_name}"
-        src_file = f"{test_name}.c"
-        if self._args.language == "CXX":
-            src_file += "pp"
+        src_file = f"test{self._src_filename}"
         cm = CMakeWrapper()
         main_branch = cm.branch()
         main_branch.append(cm.fetch_content_declare_available("catch",
@@ -156,7 +208,7 @@ doxygen_add_docs(docs modern/lib.hpp "${CMAKE_CURRENT_SOURCE_DIR}/mainpage.md"
         main_branch.append(cm.target_compile_features(test_name,
             "cxx_std_17", visibility="PRIVATE"))
         main_branch.append(cm.target_link_libraries(test_name,
-            ["self._args.lib_name", "Catch2::Catch2"], visibility="PRIVATE"))
+            [f"{self._args.project_name}_lib", "Catch2::Catch2"], visibility="PRIVATE"))
         main_branch.append(cm.add_test(f"{test_name}_test", test_name)) 
         out_file = Path(self._args.output_dir) / self._args.project_name / "tests" / "CMakeLists.txt"
         self.write_cmakelists(out_file, main_branch)
@@ -210,6 +262,7 @@ def main():
     mkgen.gen_libs()
     mkgen.gen_tests()
     mkgen.gen_docs()
+    mkgen.init_example_source()
 
 if __name__ == "__main__":
     main()
