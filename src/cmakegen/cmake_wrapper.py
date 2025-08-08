@@ -112,7 +112,7 @@ project(
 
     def add_test(self, name, command, *, comment=""):
         result = _mk_comment(comment)
-        result.append(f"add_test(NAME {name} COMMAND command)")
+        result.append(f"add_test(NAME {name} COMMAND {command})")
         return result
 
     def add_executable(self, name: str, sources: list[str], **kwargs) -> str:

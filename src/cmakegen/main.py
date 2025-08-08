@@ -86,7 +86,7 @@ int main(int argc, char* argv[])
 
 TEST_CASE( "Quick check", "[main]" ) 
 {{
-    int res = example(12);
+    int res = example(21);
     REQUIRE( res == 42 );
 }}
 """)
