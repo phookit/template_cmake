@@ -1,0 +1,216 @@
+#!/bin/python3
+
+import argparse
+import os
+from pathlib import Path
+
+from cmake_wrapper import CMakeWrapper
+
+def create_dirs(path):
+    path.mkdir(parents=True, exist_ok=True)
+
+
+class CMakeGen:
+    def __init__(self, args):
+        self._args = args
+
+    def write_cmakelists(self, out_file, root_branch):
+        print("write_cmakelists...")
+        with open(out_file, "w") as f:
+            root_branch.write(f)
+
+    def init_dir_structure(self):
+        root_dir = self._args.output_dir
+        root_path = Path(root_dir) / self._args.project_name
+        create_dirs(root_path / "include" / self._args.project_name)
+        create_dirs(root_path / "src")
+        create_dirs(root_path / "apps")
+        create_dirs(root_path / "tests")
+        if not self._args.no_docs:
+          create_dirs(root_path / self._args.docs_dir)
+
+    def gen_main_cmakelists(self):
+        cm = CMakeWrapper()
+        main_branch = cm.branch()
+        main_branch.append( cm.minimum_cmake_version("3.20", "4.0"))
+        main_branch.append( cm.project(self._args.project_name, languages=self._args.language))
+        main_proj_branch = cm.cond_main_project(
+            comment="Only do these if this is the main project, and not if it is included through add_subdirectory",
+            level=1)
+        main_proj_branch.append( cm.set("CMAKE_CXX_EXTENSIONS", "OFF",
+            comment="Lets ensure -std=c++xx instead of -std=g++xx"))
+        main_proj_branch.append( cm.set_property("GLOBAL", "", "USE_FOLDERS", "ON"))
+        main_proj_branch.append( cm.include("CTest",
+            comment="""Testing only available if this is the main app
+Note this needs to be done in the main CMakeLists
+since it calls enable_testing, which must be in the
+main CMakeLists.
+"""))
+        if not self._args.no_docs:
+            main_proj_branch.append(cm.add_doxygen(self._args.docs_dir,
+                comment="""Docs only available if this is the main app
+NOTE: graphviz is required:
+    sudo apt install graphviz"""))
+        main_branch.append( main_proj_branch )
+       
+        main_branch.append(cm.include("FetchContent",
+            comment="""FetchContent added in CMake 3.11, downloads during the configure step
+FetchContent_MakeAvailable was added in CMake 3.14; simpler usage"""))
+
+        main_branch.append(cm.find_package("Boost", required=True,
+            comment="""This is header only, so could be replaced with git submodules or FetchContent
+Adds Boost::boost"""))
+
+        main_branch.append(cm.fetch_content_declare_available("fmtlib",
+            "https://github.com/fmtlib/fmt.git",
+            "5.3.0",
+            comment="""ormatting library.
+Adds fmt::fnt"""))
+
+        if not self._args.no_lib:
+            main_branch.append(cm.add_subdirectory("src",
+                comment="The compiled library code is here"))
+
+        if not self._args.no_app:
+            main_branch.append(cm.add_subdirectory("apps",
+                comment="The executable code is here"))
+
+        test_branch = cm.conditional("(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME OR MODERN_CMAKE_BUILD_TESTING) AND BUILD_TESTING",
+                comment="""Testing only available if this is the main app
+Emergency override MODERN_CMAKE_BUILD_TESTING provided as well""")
+        test_branch.append(cm.add_subdirectory("tests"))
+        main_branch.append(test_branch)
+
+        out_file = Path(self._args.output_dir) / self._args.project_name / "CMakeLists.txt"
+        self.write_cmakelists(out_file, main_branch)
+
+    def gen_apps(self):
+        if self._args.app_name is None:
+            return
+        cm = CMakeWrapper()
+        src_filename = f"{self._args.project_name}.c"
+        if self._args.language == "CXX":
+            src_filename += "pp"
+        main_branch = cm.branch()
+        main_branch.append(cm.add_executable(self._args.app_name,
+            [src_filename]))
+        main_branch.append(cm.target_compile_features(self._args.app_name,
+            "cxx_std_11", visibility="PRIVATE"))
+        main_branch.append(cm.target_link_libraries(self._args.app_name,
+            [self._args.lib_name], visibility="PRIVATE"))
+        out_file = Path(self._args.output_dir) / self._args.project_name / "apps" / "CMakeLists.txt"
+        self.write_cmakelists(out_file, main_branch)
+
+    def gen_libs(self):
+        if self._args.lib_name is None:
+            return
+        cm = CMakeWrapper()
+        src_filename = f"{self._args.project_name}.c"
+        if self._args.language == "CXX":
+            src_filename += "pp"
+        hdr_filename = f"{self._args.project_name}.h"
+        if self._args.language == "CXX":
+            hdr_filename += "pp"
+        hdr_list = f"${{{self._args.project_name}_SOURCE_DIR/include/{self._args.project_name}/{hdr_filename}"
+        main_branch = cm.branch()
+        main_branch.append(cm.set("HEADER_LIST", hdr_list))
+        main_branch.append(cm.add_library(self._args.lib_name,
+            [src_filename, "${HEADER_LIST}"]))
+        main_branch.append(cm.target_include_directories(self._args.lib_name,
+            ["../include"], visibility="PUBLIC"))
+        main_branch.append(cm.target_link_libraries(self._args.lib_name,
+            ["Boost::boost"], visibility="PRIVATE"))
+        main_branch.append(cm.target_compile_features(self._args.lib_name,
+            "cxx_std_11", visibility="PUBLIC"))
+        main_branch.append(cm.source_group("include", "Header files", ["${HEADER_LIST}"]))
+
+        out_file = Path(self._args.output_dir) / self._args.project_name / "src" / "CMakeLists.txt"
+        self.write_cmakelists(out_file, main_branch)
+
+    def gen_docs(self):
+        if self._args.no_docs:
+            return
+        cm = CMakeWrapper()
+        main_branch = cm.branch()
+        main_branch.append("""set(DOXYGEN_EXTRACT_ALL YES)
+set(DOXYGEN_BUILTIN_STL_SUPPORT YES)
+
+doxygen_add_docs(docs modern/lib.hpp "${CMAKE_CURRENT_SOURCE_DIR}/mainpage.md"
+                 WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/include")
+""")
+        out_file = Path(self._args.output_dir) / self._args.project_name / "docs" / "CMakeLists.txt"
+        self.write_cmakelists(out_file, main_branch)
+
+    def gen_tests(self):
+        test_name = f"test{self._args.lib_name}"
+        src_file = f"{test_name}.c"
+        if self._args.language == "CXX":
+            src_file += "pp"
+        cm = CMakeWrapper()
+        main_branch = cm.branch()
+        main_branch.append(cm.fetch_content_declare_available("catch",
+            "https://github.com/catchorg/Catch2.git",
+            "v2.13.6"))
+        main_branch.append(cm.add_executable(test_name,
+            [src_file]))
+        main_branch.append(cm.target_compile_features(test_name,
+            "cxx_std_17", visibility="PRIVATE"))
+        main_branch.append(cm.target_link_libraries(test_name,
+            ["self._args.lib_name", "Catch2::Catch2"], visibility="PRIVATE"))
+        main_branch.append(cm.add_test(f"{test_name}_test", test_name)) 
+        out_file = Path(self._args.output_dir) / self._args.project_name / "tests" / "CMakeLists.txt"
+        self.write_cmakelists(out_file, main_branch)
+
+def main():
+    parser = argparse.ArgumentParser(description="Generate CMakeLists.txt for C/C++ projects")
+    # mandatory args
+    req_named = parser.add_argument_group('Required arguments')
+    req_named.add_argument("-o", "--output-dir", default=".", help="Output directory", required=True)
+    req_named.add_argument("-n", "--project-name", help="Project name", required=True)
+    # optional args
+    parser.add_argument("-l", "--language", choices=["C", "CXX", "c++11", "c++14", "c++17", "c++23"], default="CXX",
+                       help="Programming language (C or C++)")
+    parser.add_argument("--app-name", help="Application(s) name",
+                       default="-")
+    parser.add_argument("--lib-name", help="Librarie(s) name",
+                       default="-")
+    parser.add_argument("--no-app", action="store_true", help="Do not generate executable")
+    parser.add_argument("--no-lib", action="store_true", help="Do not generate libraries")
+    parser.add_argument("--no-docs", action="store_true", help="Do not generate documanetation")
+    parser.add_argument("--docs-dir", help="Documantation directory",
+                       default="docs")
+
+    args = parser.parse_args()
+
+    if args.app_name == "-":
+        args.app_name = f"{args.project_name}_app"
+    if args.lib_name == "-":
+        args.lib_name = f"{args.project_name}_lib"
+    if args.no_app:
+        args.app_name = None
+    if args.no_lib:
+        args.lib_name = None
+    if args.language.startswith("c++"):
+        args.language = "CXX"
+    output_dir = args.output_dir
+    project_name = args.project_name
+    language = args.language
+    app_name = args.app_name
+    lib_name = args.lib_name
+    print(f"Output dir: {output_dir}")
+    print(f"Project name: {project_name}")
+    print(f"Language: {language}")
+    print(f"App name: {app_name}")
+    print(f"Lib name: {lib_name}")
+
+    mkgen = CMakeGen(args)
+    mkgen.init_dir_structure()
+    mkgen.gen_main_cmakelists()
+    mkgen.gen_apps()
+    mkgen.gen_libs()
+    mkgen.gen_tests()
+    mkgen.gen_docs()
+
+if __name__ == "__main__":
+    main()
+
