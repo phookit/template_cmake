@@ -1,6 +1,5 @@
 
 def _mk_comment(comment):
-    print(f"_mk_comment: {comment}")
     if not comment:
         return []
     multi_line = comment.split("\n")
@@ -18,7 +17,6 @@ class Branch:
         self._level = level
         self._branch_indent = " " * (level * _INDENT_PER_LEVEL)
         self._comment = _mk_comment(comment)
-        print(f"BRANCH COND:{cond}")
 
     @property
     def output(self):
@@ -29,37 +27,30 @@ class Branch:
         return self._cond != ""
 
     def append(self, val):
-        print(f"APPEND:val={val} self._output={self._output}")
         if isinstance(val, (str, Branch)):
             self._output.append(val)
         else:  # list
             self._output.extend(val)
 
     def _write_item(self, item, out_file, level):
-        print(f"\n\n!!!!!! GOT BRANCH ITEM:\"{item}\"\n\n")
         if isinstance(item, Branch):
-            print("DO BRANCH")
             item.write(out_file, level+1)
         elif isinstance(item, str):
-            print("DO STR")
             #s = b.ljust(indent, " ")
             pad = " " * (level * _INDENT_PER_LEVEL)
             s = f"{pad}{item}"
             out_file.write(f"{s}\n")
         else:  # list
-            print("************* DO LIST")
             for item in b:
                 self._write_item(item, out_file, level)
 
 
     def write(self, out_file, level=0):
         if self._comment:
-            print(f"Adding comment. level={level}")
             lev = level
             if lev > 0:
                 lev -= 1
             pad = " " * (lev * _INDENT_PER_LEVEL)
-            print(f"  got pad=\"{pad}\"")
             for c in self._comment:
                 out_file.write(f"{pad}{c}")
             out_file.write("\n")

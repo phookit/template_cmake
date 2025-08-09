@@ -2,6 +2,7 @@
 
 import argparse
 import os
+import re
 from pathlib import Path
 
 from cmake_wrapper import CMakeWrapper
@@ -24,7 +25,6 @@ class CMakeGen:
         self._hdr_filename = f"{self._lc_project_name}.{hdr_ext}"
 
     def write_cmakelists(self, out_file, root_branch):
-        print("write_cmakelists...")
         with open(out_file, "w") as f:
             root_branch.write(f)
 
@@ -236,6 +236,9 @@ def main():
                        default="docs")
 
     args = parser.parse_args()
+
+    # replace invalid characters with underscores
+    args.project_name = re.sub(r"[\s-]", "_", args.project_name)
 
     if args.app_name == "-":
         args.app_name = f"{args.project_name.lower()}_app"
