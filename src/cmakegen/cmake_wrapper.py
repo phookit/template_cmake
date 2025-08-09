@@ -11,11 +11,9 @@ def _mk_comment(comment):
 _INDENT_PER_LEVEL = 2
 
 class Branch:
-    def __init__(self, *, cond="", comment="", level=0):
+    def __init__(self, *, cond="", comment=""):
         self._output = []
         self._cond = cond
-        self._level = level
-        self._branch_indent = " " * (level * _INDENT_PER_LEVEL)
         self._comment = _mk_comment(comment)
 
     @property
@@ -93,13 +91,13 @@ project(
         result.append("")
         return result
 
-    def conditional(self, cond, *, level=0, comment=""):
+    def conditional(self, cond, *, comment=""):
         return Branch(cond=cond,
-                comment=comment, level=level)
+                comment=comment)
 
-    def cond_main_project(self, comment="", level=0):
+    def cond_main_project(self, comment=""):
         return Branch(cond="CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME",
-                comment=comment, level=level)
+                comment=comment)
 
     def add_test(self, name, command, *, comment=""):
         result = _mk_comment(comment)

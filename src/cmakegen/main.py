@@ -110,8 +110,7 @@ TEST_CASE( "Quick check", "[main]" )
         main_branch.append( cm.minimum_cmake_version("3.20", "4.0"))
         main_branch.append( cm.project(self._norm_project_name, languages=self._args.language))
         main_proj_branch = cm.cond_main_project(
-            comment="Only do these if this is the main project, and not if it is included through add_subdirectory",
-            level=1)
+            comment="Only do these if this is the main project, and not if it is included through add_subdirectory")
         main_proj_branch.append( cm.set("CMAKE_CXX_EXTENSIONS", "OFF",
             comment="Lets ensure -std=c++xx instead of -std=g++xx"))
         main_proj_branch.append( cm.set_property("GLOBAL", "", "USE_FOLDERS", "ON"))
