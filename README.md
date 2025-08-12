@@ -83,42 +83,16 @@ Command line parameters to the Python app specify:
 * The output directory.
 * The name of the project.
 * The language (C or C++). Affects generated source file names (.cpp or .c, etc). For C++ this may also include the std. i.e. `c++17`.
-* The executable apps name(s). This will cause the `àpps` directory to be created with a sub dir for the app source code along with suitable CMakeLists.txt. It can be a single app name or a comma separated list of app names.
-* The library name(s). This will cause the `src` directory to be created along with sub-dirrectories for each library. Each sub dir will have a suitable CMakeLists.txt file generated. This can be a comma separated list of lib names. Each lib name can also be siffixed with `static`, `dynamic`or `both`to specify the types of library to build. The default is `both`.
+* The executable apps name(s). This will cause the `àpps` directory to be created with an example app and suitable CMakeLists.txt.
+* The library name(s). This will cause the `src` directory to be created Each sub dir will have a suitable CMakeLists.txt file generated along with an example lib source file.
 
-If a single library is specified no sub-dirs will be created. If multiple lib names are specified sub-directories will be created. i.e:
-
-### Single library
+### Library
 
     - src/
         libname.c[pp]
+        CMakeLists.txt
     - inlude/PROJ_NAME/
         libname.h[pp]
-
-### Multiple libraries
-
-    - src/
-        - lib1name/
-            lib1name.c[pp]
-            CMakeLists.txt
-        - lib2name/
-            lib2name.c[pp]
-            CMakeLists.txt
-    - inlude/PROJ_NAME/
-        - lib1name/
-            lib1name.h[pp]
-        - lib2name/
-            lib2name.h[pp]
-
-In both cases the `tests` dir will contain sub dirs or not depending on single or multi lib.
-
-If multiple `àpps` are specified the same is true for the `àpps` directory.
-
-
-## Future
-
-* May want individual libraries to be built/unit tested within a single CMake project. In this case the `src` directory should have sub dirs for each lib. Same with the apps directory. Each sub dir will have its own CMakeLists.txt.
-* Possibly create a .yaml file that specifies the config for various CMakeLists.txt from the root CMakeLists.txt and all sub dir CMakeLists.txt for more complicated initial projects.
 
 
 
