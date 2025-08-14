@@ -83,23 +83,38 @@ Command line parameters to the Python app specify:
 * The output directory.
 * The name of the project.
 * The language (C or C++). Affects generated source file names (.cpp or .c, etc). For C++ this may also include the std. i.e. `c++17`.
-<<<<<<< HEAD
 * The executable apps name(s). This will cause the `àpps` directory to be created with an example app and suitable CMakeLists.txt.
 * The library name(s). This will cause the `src` directory to be created Each sub dir will have a suitable CMakeLists.txt file generated along with an example lib source file.
 
 ### Library
 
+```
     - src/
         libname.c[pp]
         CMakeLists.txt
     - inlude/PROJ_NAME/
         libname.h[pp]
+```
 
+### Usage
 
+```
+usage: main.py [-h] -o OUTPUT_DIR -n PROJECT_NAME [-l {C,CXX,c++11,c++14,c++17,c++23}] [--no-app] [--no-lib] [--no-docs] [--docs-dir DOCS_DIR]
 
+Generate CMakeLists.txt for C/C++ projects
 
-=======
-* Whether to create an executable or not.
-* Whether to create a library or not.
-* Whether to create documentaion or not.
->>>>>>> 1f61d4c (allow other chars in project name)
+options:
+  -h, --help            show this help message and exit
+  -l {C,CXX,c++11,c++14,c++17,c++23}, --language {C,CXX,c++11,c++14,c++17,c++23}
+                        Programming language (C or C++)
+  --no-app              Do not generate executable
+  --no-lib              Do not generate libraries
+  --no-docs             Do not generate documanetation
+  --docs-dir DOCS_DIR   Documantation directory
+
+Required arguments:
+  -o OUTPUT_DIR, --output-dir OUTPUT_DIR
+                        Output directory
+  -n PROJECT_NAME, --project-name PROJECT_NAME
+                        Project name
+```
