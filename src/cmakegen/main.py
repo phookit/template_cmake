@@ -216,16 +216,16 @@ doxygen_add_docs(docs modern/lib.hpp "${CMAKE_CURRENT_SOURCE_DIR}/mainpage.md"
         src_file = f"test{self._src_filename}"
         cm = CMakeWrapper()
         main_branch = cm.branch()
-        #main_branch.append(cm.fetch_content_declare_available("catch",
-        #    "https://github.com/catchorg/Catch2.git",
-        #    "v2.13.6"))
+        main_branch.append(cm.fetch_content_declare_available("catch",
+            "https://github.com/catchorg/Catch2.git",
+            "v2.13.6"))
         main_branch.append(cm.add_executable(test_name,
             [src_file]))
         main_branch.append(cm.target_compile_features(test_name,
             "cxx_std_17", visibility="PRIVATE"))
         main_branch.append(cm.target_link_libraries(test_name,
             [f"{self._norm_lib_target}"], visibility="PRIVATE"))
-        #[f"{self._norm_lib_target}", "Catch2::Catch2"], visibility="PRIVATE"))
+        [f"{self._norm_lib_target}", "Catch2::Catch2"], visibility="PRIVATE"))
         main_branch.append(cm.add_test(f"{test_name}_test", test_name)) 
         out_file = self._root_project_path / "tests" / "CMakeLists.txt"
         self.write_cmakelists(out_file, main_branch)
