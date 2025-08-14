@@ -276,7 +276,8 @@ project(
         result.append("")
         return result
 
-    def set_property(self, scope: str, target: str, property_name: str, value: str, **kwargs) -> str:
+    def set_property(self, scope: str, target: str, property_name: str, value: str, *,
+                     append=None, append_string=None, comment="") -> list:
         """Wrapper for CMake's set_property function.
         
         Args:
@@ -290,14 +291,18 @@ project(
             CMake command as a string.
         """
         command = f"set_property({scope} {target} PROPERTY {property_name} {value}"
-        if kwargs.get('append'):
+        if append is not None:
             command += " APPEND"
-        if kwargs.get('append_string'):
+        if append_string is not None:
             command += " APPEND_STRING"
         command += ")"
-        return command
+
+        result = _mk_comment(comment)
+        result.append(command)
+        result.append("")
+        return result
     
-    def add_compile_options(self, options: list[str], **kwargs) -> str:
+    def add_compile_options(self, options: list[str], *, comment="") -> list:
         """Wrapper for CMake's add_compile_options function.
         
         Args:
@@ -307,7 +312,11 @@ project(
         Returns:
             CMake command as a string.
         """
-        return f"add_compile_options({' '.join(options)})"
+        command = f"add_compile_options({' '.join(options)})"
+        result = _mk_comment(comment)
+        result.append(command)
+        result.append("")
+        return result
     
     def add_definitions(self, definitions: list[str], **kwargs) -> str:
         """Wrapper for CMake's add_definitions function.

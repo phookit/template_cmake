@@ -113,7 +113,8 @@ TEST_CASE( "Quick check", "[main]" )
             comment="Only do these if this is the main project, and not if it is included through add_subdirectory")
         main_proj_branch.append( cm.set("CMAKE_CXX_EXTENSIONS", "OFF",
             comment="Lets ensure -std=c++xx instead of -std=g++xx"))
-        main_proj_branch.append( cm.set_property("GLOBAL", "", "USE_FOLDERS", "ON"))
+        main_proj_branch.append( cm.set_property("GLOBAL", "", "USE_FOLDERS", "ON",
+            comment="Lets nicely support folders in IDEs"))
         main_proj_branch.append( cm.include("CTest",
             comment="""Testing only available if this is the main app
 Note this needs to be done in the main CMakeLists
