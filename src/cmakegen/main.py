@@ -224,8 +224,7 @@ doxygen_add_docs(docs modern/lib.hpp "${CMAKE_CURRENT_SOURCE_DIR}/mainpage.md"
         main_branch.append(cm.target_compile_features(test_name,
             "cxx_std_17", visibility="PRIVATE"))
         main_branch.append(cm.target_link_libraries(test_name,
-            [f"{self._norm_lib_target}"], visibility="PRIVATE"))
-        [f"{self._norm_lib_target}", "Catch2::Catch2"], visibility="PRIVATE"))
+            [f"{self._norm_lib_target} Catch2::Catch2"], visibility="PRIVATE"))
         main_branch.append(cm.add_test(f"{test_name}_test", test_name)) 
         out_file = self._root_project_path / "tests" / "CMakeLists.txt"
         self.write_cmakelists(out_file, main_branch)
