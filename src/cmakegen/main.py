@@ -15,38 +15,50 @@ class CMakeGen:
     def __init__(self, args):
         self._args = args
         self._lc_project_name = self._args.project_name.lower()
+        # normalise top level dir name
+        self._top_level_dir = re.sub(r"[\s]", "_", self._args.project_name)
+        # normalise the project name to use for filenames, header directives, etc
+        self._norm_project_name = re.sub(r"[\s\.-]", "_", self._args.project_name)
+        self._root_project_path = Path(self._args.output_dir) / self._top_level_dir
+        # get our header dir name
+        self._proj_include_dir = self._root_project_path / "include" / self._norm_project_name
+        # create a safe executable filename
+        self._app_name = re.sub(r"[\s]", "_", self._args.project_name).lower()
+        # normalise the lib target name
+        self._norm_lib_target = f"{self._norm_project_name}_lib_target"
+        self._norm_app_target = f"{self._norm_project_name}_app_target"
+
+        print(f"TLD:{self._top_level_dir}")
+        print(f"NPP:{self._norm_project_name}")
+        print(f"RPP:{self._root_project_path}")
+        print(f"INC:{self._proj_include_dir}")
 
         hdr_ext = "h"
         src_ext = "c"
         if self._args.language == "CXX":
             hdr_ext += "pp"
             src_ext += "pp"
-        self._src_filename = f"{self._lc_project_name}.{src_ext}"
-        self._hdr_filename = f"{self._lc_project_name}.{hdr_ext}"
+        self._src_filename = f"{self._norm_project_name.lower()}.{src_ext}"
+        self._hdr_filename = f"{self._norm_project_name.lower()}.{hdr_ext}"
 
     def write_cmakelists(self, out_file, root_branch):
         with open(out_file, "w") as f:
             root_branch.write(f)
 
     def init_dir_structure(self):
-        root_dir = self._args.output_dir
-        root_path = Path(root_dir) / self._args.project_name
-        create_dirs(root_path / "include" / self._args.project_name)
-        create_dirs(root_path / "src")
-        create_dirs(root_path / "apps")
-        create_dirs(root_path / "tests")
+        create_dirs(self._proj_include_dir)
+        create_dirs(self._root_project_path / "src")
+        create_dirs(self._root_project_path / "apps")
+        create_dirs(self._root_project_path / "tests")
         if not self._args.no_docs:
-          create_dirs(root_path / self._args.docs_dir)
+            create_dirs(self._root_project_path / self._args.docs_dir)
 
     def init_example_source(self):
-        root_dir = self._args.output_dir
-        root_path = Path(root_dir) / self._args.project_name
         # top level include
-        top_include_dir = root_path / "include" / self._args.project_name
-        include_filename = top_include_dir / f"{self._hdr_filename}"
+        include_filename = self._proj_include_dir / f"{self._hdr_filename}"
         with open(include_filename, "w") as f:
-            f.write(f"""#ifndef {self._args.project_name}_H
-#define {self._args.project_name}_H
+            f.write(f"""#ifndef {self._norm_project_name}_H
+#define {self._norm_project_name}_H
 
 int example(int a);
 
@@ -54,10 +66,10 @@ int example(int a);
 """)
 
         # lib source
-        if self._args.lib_name is not None:
-            lib_src_file = root_path / "src" / f"{self._src_filename}"
+        if not self._args.no_lib:
+            lib_src_file = self._root_project_path / "src" / f"{self._src_filename}"
             with open(lib_src_file, "w") as f:
-                f.write(f"""#include \"{self._args.project_name}/{self._hdr_filename}\"
+                f.write(f"""#include \"{self._proj_include_dir}/{self._hdr_filename}\"
 int example(int a)
 {{
     return a * 2;
@@ -65,10 +77,10 @@ int example(int a)
 """)
 
         # app source
-        if self._args.lib_name is not None:
-            app_src_file = root_path / "apps" / f"{self._src_filename}"
+        if not self._args.no_app:
+            app_src_file = self._root_project_path / "apps" / f"{self._src_filename}"
             with open(app_src_file, "w") as f:
-                f.write(f"""#include \"{self._args.project_name}/{self._hdr_filename}\"
+                f.write(f"""#include \"{self._proj_include_dir}/{self._hdr_filename}\"
 
 int main(int argc, char* argv[])
 {{
@@ -78,11 +90,11 @@ int main(int argc, char* argv[])
 
 """)
         # test source
-        test_src_file = root_path / "tests" / f"test{self._src_filename}"
+        test_src_file = self._root_project_path / "tests" / f"test{self._src_filename}"
         with open(test_src_file, "w") as f:
             f.write(f"""#define CATCH_CONFIG_MAIN
 #include <catch2/catch.hpp>
-#include \"{self._args.project_name}/{self._hdr_filename}\"
+#include \"{self._proj_include_dir}/{self._hdr_filename}\"
 
 TEST_CASE( "Quick check", "[main]" ) 
 {{
@@ -96,7 +108,7 @@ TEST_CASE( "Quick check", "[main]" )
         cm = CMakeWrapper()
         main_branch = cm.branch()
         main_branch.append( cm.minimum_cmake_version("3.20", "4.0"))
-        main_branch.append( cm.project(self._args.project_name, languages=self._args.language))
+        main_branch.append( cm.project(self._norm_project_name, languages=self._args.language))
         main_proj_branch = cm.cond_main_project(
             comment="Only do these if this is the main project, and not if it is included through add_subdirectory",
             level=1)
@@ -124,12 +136,13 @@ FetchContent_MakeAvailable was added in CMake 3.14; simpler usage"""))
             comment="""This is header only, so could be replaced with git submodules or FetchContent
 Adds Boost::boost"""))
 
+        '''
         main_branch.append(cm.fetch_content_declare_available("fmtlib",
             "https://github.com/fmtlib/fmt.git",
             "5.3.0",
             comment="""ormatting library.
 Adds fmt::fnt"""))
-
+        '''
         if not self._args.no_lib:
             main_branch.append(cm.add_subdirectory("src",
                 comment="The compiled library code is here"))
@@ -144,44 +157,44 @@ Emergency override MODERN_CMAKE_BUILD_TESTING provided as well""")
         test_branch.append(cm.add_subdirectory("tests"))
         main_branch.append(test_branch)
 
-        out_file = Path(self._args.output_dir) / self._args.project_name / "CMakeLists.txt"
+        out_file = self._root_project_path / "CMakeLists.txt"
         self.write_cmakelists(out_file, main_branch)
 
     def gen_apps(self):
-        if self._args.app_name is None:
+        if self._args.no_app:
             return
         cm = CMakeWrapper()
         main_branch = cm.branch()
-        main_branch.append(cm.add_executable(self._args.app_name,
+        main_branch.append(cm.add_executable(self._norm_app_target,
             [self._src_filename]))
-        main_branch.append(cm.target_compile_features(self._args.app_name,
+        main_branch.append(cm.target_compile_features(self._norm_app_target,
             "cxx_std_11", visibility="PRIVATE"))
-        main_branch.append(cm.target_link_libraries(self._args.app_name,
-            [self._args.lib_name], visibility="PRIVATE"))
-        main_branch.append(cm.set_target_properties(self._args.app_name,
-            [("OUTPUT_NAME", f"{self._args.project_name.lower()}"),],
+        main_branch.append(cm.target_link_libraries(self._norm_app_target,
+            [self._norm_lib_target], visibility="PRIVATE"))
+        main_branch.append(cm.set_target_properties(self._norm_app_target,
+            [("OUTPUT_NAME", f"{self._app_name}"),],
             comment="Explicitly set the filename for the executable file"))
-        out_file = Path(self._args.output_dir) / self._args.project_name / "apps" / "CMakeLists.txt"
+        out_file = self._root_project_path / "apps" / "CMakeLists.txt"
         self.write_cmakelists(out_file, main_branch)
 
     def gen_libs(self):
-        if self._args.lib_name is None:
+        if self._args.no_lib:
             return
         cm = CMakeWrapper()
-        hdr_list = f"${{{self._args.project_name}_SOURCE_DIR}}/include/{self._args.project_name}/{self._hdr_filename}"
+        hdr_list = f"${{{self._norm_project_name}_SOURCE_DIR}}/include/{self._norm_project_name}/{self._hdr_filename}"
         main_branch = cm.branch()
         main_branch.append(cm.set("HEADER_LIST", hdr_list))
-        main_branch.append(cm.add_library(self._args.lib_name,
+        main_branch.append(cm.add_library(self._norm_lib_target,
             [self._src_filename, "${HEADER_LIST}"]))
-        main_branch.append(cm.target_include_directories(self._args.lib_name,
+        main_branch.append(cm.target_include_directories(self._norm_lib_target,
             ["../include"], visibility="PUBLIC"))
-        main_branch.append(cm.target_link_libraries(self._args.lib_name,
+        main_branch.append(cm.target_link_libraries(self._norm_lib_target,
             ["Boost::boost"], visibility="PRIVATE"))
-        main_branch.append(cm.target_compile_features(self._args.lib_name,
+        main_branch.append(cm.target_compile_features(self._norm_lib_target,
             "cxx_std_11", visibility="PUBLIC"))
         main_branch.append(cm.source_group("include", "Header files", ["${HEADER_LIST}"]))
 
-        out_file = Path(self._args.output_dir) / self._args.project_name / "src" / "CMakeLists.txt"
+        out_file = self._root_project_path / "src" / "CMakeLists.txt"
         self.write_cmakelists(out_file, main_branch)
 
     def gen_docs(self):
@@ -195,25 +208,26 @@ set(DOXYGEN_BUILTIN_STL_SUPPORT YES)
 doxygen_add_docs(docs modern/lib.hpp "${CMAKE_CURRENT_SOURCE_DIR}/mainpage.md"
                  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/include")
 """)
-        out_file = Path(self._args.output_dir) / self._args.project_name / "docs" / "CMakeLists.txt"
+        out_file = self._root_project_path / "docs" / "CMakeLists.txt"
         self.write_cmakelists(out_file, main_branch)
 
     def gen_tests(self):
-        test_name = f"test{self._args.lib_name}"
+        test_name = f"test_{self._norm_lib_target}"
         src_file = f"test{self._src_filename}"
         cm = CMakeWrapper()
         main_branch = cm.branch()
-        main_branch.append(cm.fetch_content_declare_available("catch",
-            "https://github.com/catchorg/Catch2.git",
-            "v2.13.6"))
+        #main_branch.append(cm.fetch_content_declare_available("catch",
+        #    "https://github.com/catchorg/Catch2.git",
+        #    "v2.13.6"))
         main_branch.append(cm.add_executable(test_name,
             [src_file]))
         main_branch.append(cm.target_compile_features(test_name,
             "cxx_std_17", visibility="PRIVATE"))
         main_branch.append(cm.target_link_libraries(test_name,
-            [f"{self._args.lib_name}", "Catch2::Catch2"], visibility="PRIVATE"))
+            [f"{self._norm_lib_target}"], visibility="PRIVATE"))
+        #[f"{self._norm_lib_target}", "Catch2::Catch2"], visibility="PRIVATE"))
         main_branch.append(cm.add_test(f"{test_name}_test", test_name)) 
-        out_file = Path(self._args.output_dir) / self._args.project_name / "tests" / "CMakeLists.txt"
+        out_file = self._root_project_path / "tests" / "CMakeLists.txt"
         self.write_cmakelists(out_file, main_branch)
 
 def main():
@@ -225,41 +239,21 @@ def main():
     # optional args
     parser.add_argument("-l", "--language", choices=["C", "CXX", "c++11", "c++14", "c++17", "c++23"], default="CXX",
                        help="Programming language (C or C++)")
-    parser.add_argument("--app-name", help="Application(s) name",
-                       default="-")
-    parser.add_argument("--lib-name", help="Librarie(s) name",
-                       default="-")
     parser.add_argument("--no-app", action="store_true", help="Do not generate executable")
     parser.add_argument("--no-lib", action="store_true", help="Do not generate libraries")
     parser.add_argument("--no-docs", action="store_true", help="Do not generate documanetation")
     parser.add_argument("--docs-dir", help="Documantation directory",
                        default="docs")
-
     args = parser.parse_args()
 
-    # replace invalid characters with underscores
-    args.project_name = re.sub(r"[\s-]", "_", args.project_name)
-
-    if args.app_name == "-":
-        args.app_name = f"{args.project_name.lower()}_app"
-    if args.lib_name == "-":
-        args.lib_name = f"{args.project_name.lower()}"
-    if args.no_app:
-        args.app_name = None
-    if args.no_lib:
-        args.lib_name = None
     if args.language.startswith("c++"):
         args.language = "CXX"
     output_dir = args.output_dir
     project_name = args.project_name
     language = args.language
-    app_name = args.app_name
-    lib_name = args.lib_name
     print(f"Output dir: {output_dir}")
     print(f"Project name: {project_name}")
     print(f"Language: {language}")
-    print(f"App name: {app_name}")
-    print(f"Lib name: {lib_name}")
 
     mkgen = CMakeGen(args)
     mkgen.init_dir_structure()

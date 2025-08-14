@@ -83,6 +83,7 @@ Command line parameters to the Python app specify:
 * The output directory.
 * The name of the project.
 * The language (C or C++). Affects generated source file names (.cpp or .c, etc). For C++ this may also include the std. i.e. `c++17`.
+<<<<<<< HEAD
 * The executable apps name(s). This will cause the `àpps` directory to be created with an example app and suitable CMakeLists.txt.
 * The library name(s). This will cause the `src` directory to be created Each sub dir will have a suitable CMakeLists.txt file generated along with an example lib source file.
 
@@ -97,3 +98,8 @@ Command line parameters to the Python app specify:
 
 
 
+=======
+* Whether to create an executable or not.
+* Whether to create a library or not.
+* Whether to create documentaion or not.
+>>>>>>> 1f61d4c (allow other chars in project name)
